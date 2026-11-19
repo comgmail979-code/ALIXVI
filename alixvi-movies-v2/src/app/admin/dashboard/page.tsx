@@ -42,6 +42,8 @@ export default function Dashboard() {
   const [status, setStatus] = useState("Checking administrator session...");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [posterFile, setPosterFile] = useState<File | null>(null);
+  const [uploadingPoster, setUploadingPoster] = useState(false);
 
   const loadMovies = useCallback(async () => {
     if (!supabase) return;
@@ -102,6 +104,24 @@ export default function Dashboard() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  async function uploadPoster() {
+    if (!supabase || !posterFile) return;
+    if (!posterFile.type.startsWith("image/")) { setMessage("Please choose an image file."); return; }
+    if (posterFile.size > 8 * 1024 * 1024) { setMessage("Poster must be 8 MB or smaller."); return; }
+    setUploadingPoster(true); setMessage("");
+    const extension = posterFile.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+    const path = `posters/${crypto.randomUUID()}.${extension}`;
+    const { error } = await supabase.storage.from("movie-posters").upload(path, posterFile, {
+      upsert: false, contentType: posterFile.type, cacheControl: "3600",
+    });
+    setUploadingPoster(false);
+    if (error) { setMessage("Poster upload failed: " + error.message); return; }
+    const { data } = supabase.storage.from("movie-posters").getPublicUrl(path);
+    setField("poster_path", data.publicUrl);
+    setPosterFile(null);
+    setMessage("Poster uploaded. Save the content to keep this poster attached.");
+  }
+
   async function saveMovie(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!supabase || !email) return;
@@ -155,7 +175,14 @@ export default function Dashboard() {
         <label>Language<input style={inputStyle} value={draft.language} onChange={e=>setField("language",e.target.value)} /></label>
         <label>Access<select style={inputStyle} value={draft.access_type} onChange={e=>setField("access_type",e.target.value as Draft["access_type"])}><option value="free">Free</option><option value="premium">Premium</option></select></label>
         <label>Publish status<select style={inputStyle} value={draft.status} onChange={e=>setField("status",e.target.value as Draft["status"])}><option value="draft">Draft</option><option value="published">Published</option><option value="archived">Archived</option></select></label>
-        <label style={{ gridColumn: "1 / -1" }}>Poster image URL or storage path<input style={inputStyle} value={draft.poster_path} onChange={e=>setField("poster_path",e.target.value)} /></label>
+        <div style={{ gridColumn: "1 / -1", display: "grid", gap: 9 }}>
+          <label>Upload poster image (JPG, PNG, WebP · max 8 MB)<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{ ...inputStyle, padding: 9 }} onChange={e=>setPosterFile(e.target.files?.[0] || null)} /></label>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <button className="button secondary" type="button" disabled={!posterFile || uploadingPoster} onClick={uploadPoster}>{uploadingPoster ? "Uploading poster..." : "Upload poster"}</button>
+            {draft.poster_path && <span className="muted">Poster attached</span>}
+          </div>
+          <label>Or paste poster image URL<input style={inputStyle} value={draft.poster_path} onChange={e=>setField("poster_path",e.target.value)} placeholder="https://..." /></label>
+        </div>
         <label style={{ gridColumn: "1 / -1" }}>Watch link<input type="url" style={inputStyle} value={draft.external_watch_url} onChange={e=>setField("external_watch_url",e.target.value)} placeholder="https://..." /></label>
         <label style={{ gridColumn: "1 / -1" }}>Download link or storage path<input style={inputStyle} value={draft.download_path} onChange={e=>setField("download_path",e.target.value)} /></label>
         <label style={{ gridColumn: "1 / -1" }}>Trailer URL<input type="url" style={inputStyle} value={draft.trailer_url} onChange={e=>setField("trailer_url",e.target.value)} /></label>
@@ -178,6 +205,6 @@ export default function Dashboard() {
         </article>)}
       </div>}
     </section>}
-    <p className="muted" style={{ marginTop: 28, fontSize: 13 }}>Changes are protected by the existing Supabase administrator policies. This manager stores poster and media references; it does not upload media files yet.</p>
+    <p className="muted" style={{ marginTop: 28, fontSize: 13 }}>Changes are protected by the existing Supabase administrator policies. Poster files upload to the existing public movie-posters bucket; video upload and playback access will be handled separately.</p>
   </main></>;
 }
