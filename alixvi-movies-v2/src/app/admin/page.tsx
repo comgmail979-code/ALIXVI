@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 
 export default function Admin() {
   const router = useRouter();
-  const [phone, setPhone] = useState("+250782665228");
+  const [email, setEmail] = useState("comgmail979@gmail.com");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [messageKind, setMessageKind] = useState<"success" | "error" | "info">("info");
@@ -23,17 +23,16 @@ export default function Admin() {
       return;
     }
 
-    const cleanPhone = phone.replace(/[\\s()-]/g, "");
-    if (!/^\\+[1-9]\\d{7,14}$/.test(cleanPhone) || !password) {
+    if (!email.trim() || !password) {
       setMessageKind("error");
-      setMessage("Andika nimero mu buryo mpuzamahanga, urugero +25078XXXXXXX, hamwe na password.");
+      setMessage("Andika email na password byawe.");
       return;
     }
 
     setBusy(true);
     setMessage("");
     const { error } = await supabase.auth.signInWithPassword({
-      phone: cleanPhone,
+      email: email.trim(),
       password,
     });
     setBusy(false);
@@ -41,7 +40,7 @@ export default function Admin() {
     if (error) {
       setMessageKind("error");
       setMessage(/invalid login credentials/i.test(error.message)
-        ? "Nimero cyangwa password si byo. Konti igomba kubanza guhuza nimero yawe kandi ikagira password."
+        ? "Email cyangwa password si byo. Reba amakuru ya konti ya admin."
         : "Ntibyashobotse kwinjira. Ongera ugerageze nyuma.");
       return;
     }
@@ -58,10 +57,10 @@ export default function Admin() {
         <section className="adminbox" style={{ width: "100%", maxWidth: 480, padding: "clamp(22px,5vw,38px)", borderRadius: 22, boxShadow: "0 24px 80px rgba(0,0,0,.28)" }}>
           <div className="tag" style={{ letterSpacing: 2 }}>ALIXVI · ADMIN ACCESS</div>
           <h1 style={{ font: "700 clamp(28px,5vw,36px) 'Space Grotesk'", lineHeight: 1.15, margin: "14px 0 10px" }}>Welcome back</h1>
-          <p className="muted" style={{ lineHeight: 1.65, marginBottom: 22 }}>Injira ukoresheje nimero ya MTN na password. Nta email link ikoreshwa.</p>
+          <p className="muted" style={{ lineHeight: 1.65, marginBottom: 22 }}>Injira ukoresheje email ya admin na password. Nta email OTP cyangwa SMS code bikenewe.</p>
           <form onSubmit={submit}>
-            <label htmlFor="admin-phone" style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>MTN phone number</label>
-            <input id="admin-phone" name="phone" className="field" style={{ width: "100%", margin: "0 0 16px", boxSizing: "border-box" }} type="tel" inputMode="tel" autoComplete="username" required maxLength={16} value={phone} onChange={e => setPhone(e.target.value)} disabled={busy} />
+            <label htmlFor="admin-email" style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>Admin email</label>
+            <input id="admin-email" name="email" className="field" style={{ width: "100%", margin: "0 0 16px", boxSizing: "border-box" }} type="email" inputMode="email" autoComplete="username" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} disabled={busy} />
             <label htmlFor="admin-password" style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>Password</label>
             <input id="admin-password" name="password" className="field" style={{ width: "100%", margin: "0 0 16px", boxSizing: "border-box" }} type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter your admin password" disabled={busy} />
             <button className="button" style={{ width: "100%", justifyContent: "center", opacity: busy ? .72 : 1 }} disabled={busy} type="submit">
